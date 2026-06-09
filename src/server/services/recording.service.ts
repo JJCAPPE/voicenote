@@ -4,6 +4,7 @@ import {
   ConfirmSegmentSchema,
   CreateSegmentSchema,
   extensionForMimeType,
+  RetrySegmentSchema,
 } from "@/features/recordings/schemas/recording.schema";
 import type { RecordingSegmentRepository } from "@/server/repositories/recording-segment.repository";
 import type { JobService } from "@/server/services/job.service";
@@ -54,6 +55,24 @@ export class RecordingService {
     }
 
     await this.storage.verifyObject(segment.storagePath, segment.fileSizeBytes);
+    const uploaded = await this.segments.markUploaded(segment.id);
+    await this.jobs.enqueue({
+      type: "submit_transcription",
+      segmentId: segment.id,
+    });
+    return uploaded;
+  }
+
+  async retrySegment(input: unknown): Promise<RecordingSegment> {
+    const parsed = RetrySegmentSchema.safeParse(input);
+    if (!parsed.success) throw new ValidationError("Invalid recording segment.");
+
+    const segment = await this.segments.findById(parsed.data.segmentId);
+    if (!segment) throw new ValidationError("Recording segment was not found.");
+    if (segment.status !== "failed" || segment.audioDeleted) {
+      throw new ValidationError("Recording segment cannot be retried.");
+    }
+
     const uploaded = await this.segments.markUploaded(segment.id);
     await this.jobs.enqueue({
       type: "submit_transcription",

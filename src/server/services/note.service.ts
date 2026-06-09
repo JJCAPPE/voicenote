@@ -8,10 +8,16 @@ import type {
 import type { JobService } from "@/server/services/job.service";
 import type { Note, NoteDetail } from "@/types/models";
 
+export interface NoteStorageCleanup {
+  removeAudio(paths: string[]): Promise<void>;
+  removeAttachments(paths: string[]): Promise<void>;
+}
+
 export class NoteService {
   constructor(
     private readonly repository: NoteRepository,
     private readonly jobs: JobService,
+    private readonly storage?: NoteStorageCleanup,
   ) {}
 
   list(): Promise<Note[]> {
@@ -32,8 +38,19 @@ export class NoteService {
     return this.repository.update(id, input);
   }
 
-  delete(id: string): Promise<void> {
-    return this.repository.delete(id);
+  async delete(id: string): Promise<void> {
+    if (this.storage) {
+      const note = await this.get(id);
+      await this.storage.removeAudio(
+        note.segments
+          .filter((segment) => !segment.audioDeleted)
+          .map((segment) => segment.storagePath),
+      );
+      await this.storage.removeAttachments(
+        note.attachments.map((attachment) => attachment.storagePath),
+      );
+    }
+    await this.repository.delete(id);
   }
 
   getActiveTranscript(noteId: string): Promise<string> {

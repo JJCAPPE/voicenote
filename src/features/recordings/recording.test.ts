@@ -119,4 +119,27 @@ describe("recording helpers", () => {
       service.confirmSegmentUpload({ segmentId: "bad" }),
     ).rejects.toBeInstanceOf(ValidationError);
   });
+
+  it("requeues a failed segment without creating a new recording", async () => {
+    const failed = { ...segment, status: "failed" as const };
+    const segments = {
+      findById: vi.fn(async () => failed),
+      markUploaded: vi.fn(async () => ({ ...failed, status: "uploaded" as const })),
+    };
+    const jobs = { enqueue: vi.fn(async () => undefined) };
+    const service = new RecordingService(
+      segments as unknown as RecordingSegmentRepository,
+      {} as AudioStorage,
+      jobs as unknown as JobService,
+    );
+
+    await expect(service.retrySegment({ segmentId })).resolves.toMatchObject({
+      id: segmentId,
+      status: "uploaded",
+    });
+    expect(jobs.enqueue).toHaveBeenCalledWith({
+      type: "submit_transcription",
+      segmentId,
+    });
+  });
 });

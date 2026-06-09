@@ -185,6 +185,7 @@ describe("row mappers", () => {
       attachments: [attachmentRow],
       generated_outputs: [outputRow],
       chat_messages: [chatRow],
+      jobs: [jobRow],
     };
 
     const detail = mapNoteDetailRow(detailRow);
@@ -193,5 +194,6 @@ describe("row mappers", () => {
     expect(detail.attachments).toHaveLength(1);
     expect(detail.generatedOutputs).toHaveLength(1);
     expect(detail.chatMessages).toHaveLength(1);
+    expect(detail.jobs).toHaveLength(1);
   });
 });

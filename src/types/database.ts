@@ -117,4 +117,5 @@ export type NoteDetailRow = NoteRow & {
   attachments: AttachmentRow[];
   generated_outputs: GeneratedOutputRow[];
   chat_messages: ChatMessageRow[];
+  jobs: JobRow[];
 };

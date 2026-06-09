@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "eslint .",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -22,10 +24,14 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^24.10.1",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "dotenv": "^17.4.2",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.7",
     "jsdom": "^27.4.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"

@@ -195,6 +195,7 @@ export type NoteDetail = Note & {
   attachments: Attachment[];
   generatedOutputs: GeneratedOutput[];
   chatMessages: ChatMessage[];
+  jobs: Job[];
 };
 
 export type {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { TranscriptVersion } from "@/types/models";
 
 export interface TranscriptEditorProps {
@@ -19,8 +19,6 @@ export function TranscriptEditor({
   const [draft, setDraft] = useState(value);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => setDraft(value), [value]);
 
   async function save() {
     setPending(true);

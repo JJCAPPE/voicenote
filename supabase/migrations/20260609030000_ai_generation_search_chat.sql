@@ -1,4 +1,4 @@
-create extension if not exists vector;
+create extension if not exists vector with schema extensions;
 
 create table if not exists generated_outputs (
   id uuid primary key default gen_random_uuid(),
@@ -23,7 +23,7 @@ create table if not exists chunks (
   chunk_index integer not null check (chunk_index >= 0),
   content text not null check (nullif(trim(content), '') is not null),
   metadata jsonb not null default '{}'::jsonb,
-  embedding vector(768) not null,
+  embedding extensions.vector(768) not null,
   embedding_model text not null,
   created_at timestamptz not null default now(),
   unique (note_id, source_type, source_id, chunk_index)
@@ -38,6 +38,13 @@ create table if not exists chat_messages (
   created_at timestamptz not null default now()
 );
 
+alter table chunks
+  add column if not exists embedding extensions.vector(768),
+  add column if not exists embedding_model text;
+
+alter table chat_messages
+  add column if not exists citations jsonb not null default '[]'::jsonb;
+
 create index if not exists generated_outputs_note_idx
   on generated_outputs (note_id);
 
@@ -48,7 +55,7 @@ create index if not exists chat_messages_note_created_idx
   on chat_messages (note_id, created_at);
 
 create index if not exists chunks_embedding_hnsw_idx
-  on chunks using hnsw (embedding vector_cosine_ops);
+  on chunks using hnsw (embedding extensions.vector_cosine_ops);
 
 alter table generated_outputs enable row level security;
 alter table chunks enable row level security;
@@ -183,7 +190,7 @@ begin
       (chunk_item ->> 'chunk_index')::integer,
       chunk_item ->> 'content',
       coalesce(chunk_item -> 'metadata', '{}'::jsonb),
-      (chunk_item -> 'embedding')::text::vector(768),
+      (chunk_item -> 'embedding')::text::extensions.vector(768),
       chunk_item ->> 'embedding_model'
     );
   end loop;
@@ -207,7 +214,7 @@ grant execute on function replace_source_chunks(
 ) to service_role;
 
 create or replace function match_chunks(
-  query_embedding vector(768),
+  query_embedding extensions.vector(768),
   filter_note_id uuid default null,
   match_count integer default 8
 )
@@ -244,8 +251,8 @@ as $$
 $$;
 
 revoke all on function match_chunks(
-  vector, uuid, integer
+  extensions.vector, uuid, integer
 ) from public, anon, authenticated;
 grant execute on function match_chunks(
-  vector, uuid, integer
+  extensions.vector, uuid, integer
 ) to service_role;

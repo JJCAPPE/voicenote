@@ -20,6 +20,8 @@ export const ConfirmSegmentSchema = z.object({
   segmentId: z.uuid(),
 });
 
+export const RetrySegmentSchema = ConfirmSegmentSchema;
+
 export function extensionForMimeType(mimeType: string): string {
   const normalized = mimeType.split(";")[0].toLowerCase();
   switch (normalized) {

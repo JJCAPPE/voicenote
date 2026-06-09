@@ -1,7 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NotFoundError } from "@/lib/errors";
-import { mapNoteRow, mapRecordingSegmentRow } from "@/types/mappers";
+import {
+  mapAttachmentRow,
+  mapChatMessageRow,
+  mapGeneratedOutputRow,
+  mapJobRow,
+  mapNoteRow,
+  mapRecordingSegmentRow,
+} from "@/types/mappers";
 import type {
+  AttachmentRow,
+  ChatMessageRow,
+  GeneratedOutputRow,
+  JobRow,
   Note,
   NoteDetail,
   NoteRow,
@@ -70,16 +81,43 @@ export class NoteRepository {
   }
 
   async findById(id: string): Promise<NoteDetail | null> {
-    const [noteResult, segmentResult] = await Promise.all([
+    const [
+      noteResult,
+      segmentResult,
+      attachmentResult,
+      outputResult,
+      chatResult,
+      jobResult,
+    ] = await Promise.all([
       this.client.from("notes").select(NOTE_COLUMNS).eq("id", id).maybeSingle(),
       this.client
         .from("recording_segments")
         .select(SEGMENT_COLUMNS)
         .eq("note_id", id)
         .order("segment_index"),
+      this.client
+        .from("attachments")
+        .select("*")
+        .eq("note_id", id)
+        .order("created_at"),
+      this.client
+        .from("generated_outputs")
+        .select("*")
+        .eq("note_id", id)
+        .order("created_at"),
+      this.client
+        .from("chat_messages")
+        .select("id,note_id,role,content,citations,created_at")
+        .eq("note_id", id)
+        .order("created_at"),
+      this.client.rpc("list_note_jobs", { p_note_id: id }),
     ]);
     if (noteResult.error) throw noteResult.error;
     if (segmentResult.error) throw segmentResult.error;
+    if (attachmentResult.error) throw attachmentResult.error;
+    if (outputResult.error) throw outputResult.error;
+    if (chatResult.error) throw chatResult.error;
+    if (jobResult.error) throw jobResult.error;
     if (!noteResult.data) return null;
 
     return {
@@ -87,9 +125,16 @@ export class NoteRepository {
       segments: (segmentResult.data as unknown as RecordingSegmentRow[]).map(
         mapRecordingSegmentRow,
       ),
-      attachments: [],
-      generatedOutputs: [],
-      chatMessages: [],
+      attachments: (attachmentResult.data as unknown as AttachmentRow[]).map(
+        mapAttachmentRow,
+      ),
+      generatedOutputs: (
+        outputResult.data as unknown as GeneratedOutputRow[]
+      ).map(mapGeneratedOutputRow),
+      chatMessages: (chatResult.data as unknown as ChatMessageRow[]).map(
+        mapChatMessageRow,
+      ),
+      jobs: (jobResult.data as unknown as JobRow[]).map(mapJobRow),
     };
   }
 

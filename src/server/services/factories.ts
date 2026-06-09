@@ -29,7 +29,18 @@ export function getJobService(): JobService {
 
 export function getNoteService(): NoteService {
   const client = getSupabaseAdmin();
-  return new NoteService(new NoteRepository(client), createJobService());
+  return new NoteService(new NoteRepository(client), createJobService(), {
+    async removeAudio(paths) {
+      if (paths.length === 0) return;
+      const { error } = await client.storage.from("audio-temp").remove(paths);
+      if (error) throw error;
+    },
+    async removeAttachments(paths) {
+      if (paths.length === 0) return;
+      const { error } = await client.storage.from("attachments").remove(paths);
+      if (error) throw error;
+    },
+  });
 }
 
 export function getRecordingService(): RecordingService {
@@ -50,10 +61,7 @@ export function getTranscriptionService(): TranscriptionService {
     createJobService(),
     new SupabaseAudioStorage(client),
     new AssemblyAITranscriptionProvider(env.ASSEMBLYAI_API_KEY),
-    new URL(
-      "/api/webhooks/assemblyai",
-      process.env.APP_URL ?? "http://localhost:3000",
-    ).toString(),
+    new URL("/api/webhooks/assemblyai", env.APP_URL).toString(),
     env.ASSEMBLYAI_WEBHOOK_SECRET,
   );
 }

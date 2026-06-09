@@ -33,3 +33,17 @@ export async function confirmSegmentUploadAction(
     return toActionError(error);
   }
 }
+
+export async function retrySegmentAction(
+  input: unknown,
+): Promise<ActionResult<RecordingSegment>> {
+  try {
+    await requireSession();
+    return {
+      ok: true,
+      data: await getRecordingService().retrySegment(input),
+    };
+  } catch (error) {
+    return toActionError(error);
+  }
+}

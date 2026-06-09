@@ -148,5 +148,6 @@ export function mapNoteDetailRow(row: NoteDetailRow): NoteDetail {
     attachments: row.attachments.map(mapAttachmentRow),
     generatedOutputs: row.generated_outputs.map(mapGeneratedOutputRow),
     chatMessages: row.chat_messages.map(mapChatMessageRow),
+    jobs: row.jobs.map(mapJobRow),
   };
 }

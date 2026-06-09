@@ -113,6 +113,8 @@ export function Recorder({
       recorder.onstop = () => void finishRecording(recorder.mimeType);
       streamRef.current = stream;
       recorderRef.current = recorder;
+      // Timing starts only after permission is granted and the recorder exists.
+      // eslint-disable-next-line react-hooks/purity
       startedAtRef.current = Date.now();
       setSeconds(0);
       setState("recording");

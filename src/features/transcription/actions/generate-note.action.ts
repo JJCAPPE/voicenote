@@ -5,6 +5,7 @@ import { z, ZodError } from "zod";
 import { requireSession } from "@/lib/auth/session";
 import { toPublicError } from "@/lib/errors";
 import { getAiRuntime } from "@/server/services/ai-runtime";
+import type { Job } from "@/types/models";
 
 const GenerateNoteInputSchema = z.object({
   noteId: z.uuid(),
@@ -12,7 +13,7 @@ const GenerateNoteInputSchema = z.object({
 });
 
 export type GenerateNoteActionResult =
-  | { ok: true; data: { queued: true } }
+  | { ok: true; data: { queued: true; job: Job } }
   | { ok: false; error: string; code: string };
 
 export async function generateNoteAction(
@@ -21,11 +22,11 @@ export async function generateNoteAction(
   try {
     await requireSession();
     const payload = GenerateNoteInputSchema.parse(input);
-    await getAiRuntime().jobService.enqueue({
+    const job = await getAiRuntime().jobService.enqueue({
       type: "generate_note",
       ...payload,
     });
-    return { ok: true, data: { queued: true } };
+    return { ok: true, data: { queued: true, job } };
   } catch (error) {
     if (error instanceof ZodError) {
       return {
