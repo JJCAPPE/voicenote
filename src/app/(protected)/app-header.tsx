@@ -62,13 +62,14 @@ export function AppHeader() {
   return (
     <>
       <header className="app-header">
-        <Link className="brand" href="/dashboard">
+        <Link className="brand" href="/dashboard" prefetch={false}>
           VoiceNote
         </Link>
         <nav className="primary-nav" aria-label="Primary navigation">
           <Link
             aria-current={pathname === "/dashboard" ? "page" : undefined}
             href="/dashboard"
+            prefetch={false}
           >
             Notes
           </Link>

@@ -303,7 +303,7 @@ export function NoteWorkspace({
         className="workspace-left-rail"
         data-mobile-active={mobilePane === "details"}
       >
-        <Link className="back-link" href="/dashboard">
+        <Link className="back-link" href="/dashboard" prefetch={false}>
           ← Notes
         </Link>
         <div className="note-identity">

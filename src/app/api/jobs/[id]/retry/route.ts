@@ -17,7 +17,10 @@ export async function POST(
   } catch (error) {
     const status = error instanceof AppError ? 400 : 500;
     return Response.json(
-      { error: error instanceof AppError ? error.publicMessage : "Request failed." },
+      {
+        error:
+          error instanceof AppError ? error.publicMessage : "Request failed.",
+      },
       { status },
     );
   }

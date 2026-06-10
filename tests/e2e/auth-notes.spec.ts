@@ -5,6 +5,13 @@ import { admin } from "./helpers";
 test("login success/failure, route protection, and note CRUD", async ({
   page,
 }) => {
+  const dashboardRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/dashboard") {
+      dashboardRequests.push(request.resourceType());
+    }
+  });
+
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login$/);
 
@@ -12,9 +19,12 @@ test("login success/failure, route protection, and note CRUD", async ({
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByText("Invalid credentials.")).toBeVisible();
 
+  dashboardRequests.length = 0;
   await page.getByLabel("Password").fill("e2e-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.waitForTimeout(1_000);
+  expect(dashboardRequests).toEqual([]);
   await page.keyboard.press("Control+/");
   await expect(
     page.getByRole("heading", { name: "Keyboard shortcuts" }),
@@ -23,10 +33,15 @@ test("login success/failure, route protection, and note CRUD", async ({
 
   const title = `E2E CRUD ${crypto.randomUUID()}`;
   await page.getByRole("button", { name: "Create note" }).click();
-  await page.getByLabel("Title").fill(title);
-  await page.getByLabel("Description").fill("Created through the dashboard");
-  await page.getByLabel("Type").selectOption("project");
-  await page.getByRole("button", { name: "Save note" }).click();
+  const createDialog = page.locator("dialog[open]");
+  await createDialog.getByLabel("Title", { exact: true }).fill(title);
+  await createDialog
+    .getByLabel("Description", { exact: true })
+    .fill("Created through the dashboard");
+  await createDialog
+    .getByRole("combobox", { name: "Type" })
+    .selectOption("project");
+  await createDialog.getByRole("button", { name: "Save note" }).click();
   await expect(page).toHaveURL(/\/notes\/[0-9a-f-]+$/);
 
   const noteId = page.url().split("/").at(-1);
