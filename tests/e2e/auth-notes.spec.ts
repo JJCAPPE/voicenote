@@ -15,8 +15,14 @@ test("login success/failure, route protection, and note CRUD", async ({
   await page.getByLabel("Password").fill("e2e-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.keyboard.press("Control+/");
+  await expect(
+    page.getByRole("heading", { name: "Keyboard shortcuts" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
 
   const title = `E2E CRUD ${crypto.randomUUID()}`;
+  await page.getByRole("button", { name: "Create note" }).click();
   await page.getByLabel("Title").fill(title);
   await page.getByLabel("Description").fill("Created through the dashboard");
   await page.getByLabel("Type").selectOption("project");
@@ -26,9 +32,8 @@ test("login success/failure, route protection, and note CRUD", async ({
   const noteId = page.url().split("/").at(-1);
   expect(noteId).toBeTruthy();
 
-  const details = page
-    .getByRole("heading", { name: "Note details" })
-    .locator("..");
+  await page.getByText("Edit details", { exact: true }).click();
+  const details = page.locator(".note-settings");
   await details.getByLabel("Title").fill(`${title} updated`);
   await details.getByRole("button", { name: "Save note" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
@@ -45,4 +50,57 @@ test("login success/failure, route protection, and note CRUD", async ({
     .eq("id", noteId!)
     .maybeSingle();
   expect(data).toBeNull();
+});
+
+test("quick capture creates an untitled note and starts recording", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    class FakeMediaRecorder {
+      static isTypeSupported() {
+        return true;
+      }
+
+      mimeType = "audio/webm";
+      ondataavailable: ((event: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+
+      constructor(_stream: MediaStream, _options?: MediaRecorderOptions) {}
+      start() {}
+      stop() {
+        this.ondataavailable?.({
+          data: new Blob(["audio"], { type: this.mimeType }),
+        });
+        this.onstop?.();
+      }
+    }
+
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia: async () => ({
+          getTracks: () => [{ stop() {} }],
+        }),
+      },
+    });
+    Object.defineProperty(window, "MediaRecorder", {
+      configurable: true,
+      value: FakeMediaRecorder,
+    });
+  });
+
+  await page.goto("/login");
+  await page.getByLabel("Password").fill("e2e-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Record new note" }).click();
+  await expect(page).toHaveURL(/\/notes\/[0-9a-f-]+$/);
+  await expect(page.getByRole("button", { name: "Stop recording" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Untitled recording" })).toBeVisible();
+
+  const noteId = page.url().split("/").at(-1);
+  expect(noteId).toBeTruthy();
+  if (noteId) {
+    const { error } = await admin.from("notes").delete().eq("id", noteId);
+    if (error) throw error;
+  }
 });

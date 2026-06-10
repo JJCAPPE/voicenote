@@ -77,13 +77,21 @@ test("recording, transcript, generation, attachment, Q&A, and retry states", asy
 
     await login(page);
     await page.goto(`/notes/${note.id}`);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight <= window.innerHeight,
+      ),
+    ).toBe(true);
 
     await expect(page.getByText("Segment 1: transcribing")).toBeVisible();
     await expect(page.getByLabel("Searchable", { exact: true })).toBeVisible();
     await expect(
-      page.getByText("The transcript changed after the latest index."),
+      page.getByText(
+        "Search context is updating. Answers may use an older revision.",
+      ),
     ).toBeVisible();
 
+    await page.getByRole("tab", { name: "Transcript 2" }).click();
     const transcript = page.getByLabel("Transcript");
     await transcript.fill(
       "The launch review is Friday at ten. The owner is Morgan.",
@@ -93,6 +101,7 @@ test("recording, transcript, generation, attachment, Q&A, and retry states", asy
       page.getByText("Transcript saved. Search indexing is queued."),
     ).toBeVisible();
 
+    await page.getByRole("tab", { name: "AI notes 3" }).click();
     await page.getByRole("button", { name: "Generate notes" }).click();
     await expect(page.getByText("Generation queued.")).toBeVisible();
 
@@ -121,6 +130,7 @@ test("recording, transcript, generation, attachment, Q&A, and retry states", asy
         }),
       });
     });
+    await page.getByRole("tab", { name: "Activity" }).click();
     await page.getByRole("button", { name: "Retry job" }).click();
     await expect(page.locator(`[data-status="queued"]`).first()).toBeVisible();
 
@@ -167,6 +177,7 @@ test("recording, transcript, generation, attachment, Q&A, and retry states", asy
       });
     });
 
+    await page.getByRole("tab", { name: "Ask" }).click();
     await page
       .getByRole("textbox", { name: "Ask this note" })
       .fill("When is the review?");
@@ -174,6 +185,7 @@ test("recording, transcript, generation, attachment, Q&A, and retry states", asy
     await expect(
       page.getByText("The launch review is Friday at ten.", { exact: true }),
     ).toBeVisible();
+    await page.getByRole("tab", { name: "Sources" }).click();
     await expect(page.getByRole("heading", { name: "Sources" })).toBeVisible();
 
     await expect(page.locator('input[type="file"]')).toHaveAttribute(
@@ -223,14 +235,14 @@ test("global search and mobile note navigation use accessible controls", async (
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/notes/${note.id}`);
-    await expect(page.getByText("Live controls")).toBeVisible();
-    await page.getByText("Menu").click();
     await expect(
-      page.getByRole("navigation", { name: "Mobile navigation" }),
+      page.getByRole("navigation", { name: "Workspace panes" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("navigation", { name: "Note sections" }),
-    ).toContainText("Recording");
+    await expect(page.getByRole("button", { name: "Start recording" })).toBeVisible();
+    await page.getByRole("button", { name: "Details" }).click();
+    await expect(page.getByRole("heading", { name: note.title })).toBeVisible();
+    await page.getByRole("button", { name: "Ask & activity" }).click();
+    await expect(page.getByRole("tab", { name: "Ask" })).toBeVisible();
   } finally {
     await deleteFixtureNote(note.id);
   }
