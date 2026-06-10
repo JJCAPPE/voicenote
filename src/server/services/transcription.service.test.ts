@@ -35,12 +35,16 @@ const note: Note = {
   title: "Note",
   description: null,
   noteType: "other",
+  liveNotes: "",
   rawCombinedTranscript: "Transcript",
   cleanedTranscript: null,
   userEditedTranscript: null,
   activeTranscriptVersion: "raw",
   transcriptRevision: 1,
+  generationRevision: 1,
   indexedRevision: 0,
+  titleOrigin: "user",
+  descriptionOrigin: "placeholder",
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -90,6 +94,7 @@ function setup(overrides?: {
     rebuildRawCombinedTranscript: vi.fn(async () => ({
       ...note,
       transcriptRevision: 2,
+      generationRevision: 2,
     })),
   };
   const jobs = { enqueue: vi.fn(async () => undefined) };

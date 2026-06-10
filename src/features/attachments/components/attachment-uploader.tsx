@@ -5,7 +5,12 @@ import {
   type DragEvent,
   useRef,
   useState,
+  useEffect,
 } from "react";
+import {
+  hasOpenDialog,
+  isTypingTarget,
+} from "@/features/shortcuts/shortcuts";
 
 import type { RetryAttachmentResult } from "../../../server/services/attachment.service";
 import { getClientAttachmentValidationError } from "../attachment-validation";
@@ -40,6 +45,7 @@ type AttachmentUploaderProps = {
   noteId: string;
   initialAttachments: AttachmentListItem[];
   actions: AttachmentActions;
+  enableShortcut?: boolean;
 };
 
 function replaceAttachment(
@@ -57,6 +63,7 @@ export function AttachmentUploader({
   noteId,
   initialAttachments,
   actions,
+  enableShortcut = false,
 }: AttachmentUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const retainedFiles = useRef(new Map<string, File>());
@@ -66,6 +73,25 @@ export function AttachmentUploader({
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [busyAttachmentId, setBusyAttachmentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!enableShortcut) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (
+        event.key.toLowerCase() === "u" &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isTypingTarget(event.target) &&
+        !hasOpenDialog()
+      ) {
+        event.preventDefault();
+        inputRef.current?.click();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [enableShortcut]);
 
   async function uploadFile(file: File) {
     const validationError = getClientAttachmentValidationError(file);

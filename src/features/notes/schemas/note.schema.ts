@@ -22,3 +22,7 @@ export const SaveTranscriptSchema = z.object({
   id: z.uuid(),
   transcript: z.string().trim().min(1),
 });
+export const SaveLiveNotesSchema = z.object({
+  id: z.uuid(),
+  liveNotes: z.string().max(100_000),
+});

@@ -10,6 +10,8 @@ export type NoteType =
   | "personal"
   | "other";
 
+export type MetadataOrigin = "placeholder" | "generated" | "user";
+
 export type TranscriptVersion = "raw" | "cleaned" | "user_edited";
 
 export type SegmentStatus =
@@ -49,12 +51,16 @@ export type Note = {
   title: string;
   description: string | null;
   noteType: NoteType;
+  liveNotes: string;
   rawCombinedTranscript: string | null;
   cleanedTranscript: string | null;
   userEditedTranscript: string | null;
   activeTranscriptVersion: TranscriptVersion;
   transcriptRevision: number;
+  generationRevision: number;
   indexedRevision: number;
+  titleOrigin: MetadataOrigin;
+  descriptionOrigin: MetadataOrigin;
   createdAt: Date;
   updatedAt: Date;
 };

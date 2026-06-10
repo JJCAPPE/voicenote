@@ -22,7 +22,7 @@ import type {
 } from "@/types/models";
 
 const NOTE_COLUMNS =
-  "id,title,description,note_type,raw_combined_transcript,cleaned_transcript,user_edited_transcript,active_transcript_version,transcript_revision,indexed_revision,created_at,updated_at";
+  "id,title,description,note_type,live_notes,raw_combined_transcript,cleaned_transcript,user_edited_transcript,active_transcript_version,transcript_revision,generation_revision,indexed_revision,title_origin,description_origin,created_at,updated_at";
 const SEGMENT_COLUMNS =
   "id,note_id,segment_index,original_filename,storage_path,mime_type,file_size_bytes,duration_seconds,status,external_provider,external_job_id,raw_transcript,transcript_json,speaker_labels,audio_deleted,error_message,created_at,updated_at";
 
@@ -30,6 +30,8 @@ export interface CreateNoteInput {
   title: string;
   description?: string | null;
   noteType?: NoteType;
+  titleOrigin?: "placeholder" | "user";
+  descriptionOrigin?: "placeholder" | "user";
 }
 
 export interface UpdateNoteInput {
@@ -145,6 +147,10 @@ export class NoteRepository {
         title: input.title,
         description: input.description ?? null,
         note_type: input.noteType ?? "other",
+        title_origin: input.titleOrigin ?? "user",
+        description_origin:
+          input.descriptionOrigin ??
+          (input.description?.trim() ? "user" : "placeholder"),
       })
       .select(NOTE_COLUMNS)
       .single();
@@ -155,7 +161,11 @@ export class NoteRepository {
   async update(id: string, input: UpdateNoteInput): Promise<Note> {
     const values: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (input.title !== undefined) values.title = input.title;
-    if (input.description !== undefined) values.description = input.description;
+    if (input.title !== undefined) values.title_origin = "user";
+    if (input.description !== undefined) {
+      values.description = input.description;
+      values.description_origin = "user";
+    }
     if (input.noteType !== undefined) values.note_type = input.noteType;
 
     const { data, error } = await this.client
@@ -184,6 +194,15 @@ export class NoteRepository {
     const { data, error } = await this.client.rpc("save_edited_transcript", {
       p_note_id: id,
       p_transcript: transcript,
+    });
+    if (error) throw error;
+    return mapNoteRow(data as unknown as NoteRow);
+  }
+
+  async saveLiveNotes(id: string, liveNotes: string): Promise<Note> {
+    const { data, error } = await this.client.rpc("save_live_notes", {
+      p_note_id: id,
+      p_live_notes: liveNotes,
     });
     if (error) throw error;
     return mapNoteRow(data as unknown as NoteRow);

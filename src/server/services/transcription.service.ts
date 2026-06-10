@@ -111,7 +111,7 @@ export class TranscriptionService {
     await this.jobs.enqueue({
       type: "generate_note",
       noteId: note.id,
-      sourceRevision: note.transcriptRevision,
+      sourceRevision: note.generationRevision,
     });
     return { status: "completed", segment: completed };
   }

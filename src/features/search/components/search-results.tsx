@@ -17,18 +17,20 @@ export function SearchResults({
     <ol aria-label="Search results">
       {results.map((result) => (
         <li key={result.chunkId}>
-          <article>
-            <header>
-              <strong>{result.noteTitle}</strong>
-              <span>
-                {result.sourceType === "attachment"
-                  ? `Attachment: ${result.sourceLabel}`
-                  : "Transcript"}
-              </span>
-            </header>
-            <p>{result.excerpt}</p>
-            <small>Similarity: {Math.round(result.similarity * 100)}%</small>
-          </article>
+          <a href={`/notes/${result.noteId}`}>
+            <article>
+              <header>
+                <strong>{result.noteTitle}</strong>
+                <span>
+                  {result.sourceType === "attachment"
+                    ? `Attachment: ${result.sourceLabel}`
+                    : "Transcript"}
+                </span>
+              </header>
+              <p>{result.excerpt}</p>
+              <small>Similarity: {Math.round(result.similarity * 100)}%</small>
+            </article>
+          </a>
         </li>
       ))}
     </ol>

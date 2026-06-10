@@ -13,12 +13,16 @@ const note: Note = {
   title: "Lecture",
   description: null,
   noteType: "lecture",
+  liveNotes: "",
   rawCombinedTranscript: "raw",
   cleanedTranscript: "cleaned",
   userEditedTranscript: "edited",
   activeTranscriptVersion: "user_edited",
   transcriptRevision: 4,
+  generationRevision: 4,
   indexedRevision: 3,
+  titleOrigin: "user",
+  descriptionOrigin: "placeholder",
   createdAt: new Date("2026-06-09T10:00:00Z"),
   updatedAt: new Date("2026-06-09T10:00:00Z"),
 };
@@ -79,5 +83,45 @@ describe("note transcript behavior", () => {
       {} as JobService,
     );
     await expect(service.saveEditedTranscript(note.id, "  ")).rejects.toThrow();
+  });
+
+  it("creates quick recording drafts with placeholder-owned metadata", async () => {
+    const repository = {
+      create: vi.fn(async () => note),
+    };
+    const service = new NoteService(
+      repository as unknown as NoteRepository,
+      {} as JobService,
+    );
+
+    await service.createQuickRecording();
+
+    expect(repository.create).toHaveBeenCalledWith({
+      title: "Untitled recording",
+      description: null,
+      noteType: "other",
+      titleOrigin: "placeholder",
+      descriptionOrigin: "placeholder",
+    });
+  });
+
+  it("saves live notes without queueing transcript indexing", async () => {
+    const repository = {
+      saveLiveNotes: vi.fn(async () => ({
+        ...note,
+        liveNotes: "Remember the owner.",
+        generationRevision: 5,
+      })),
+    };
+    const jobs = { enqueue: vi.fn() };
+    const service = new NoteService(
+      repository as unknown as NoteRepository,
+      jobs as unknown as JobService,
+    );
+
+    await expect(
+      service.saveLiveNotes(note.id, "Remember the owner."),
+    ).resolves.toMatchObject({ generationRevision: 5 });
+    expect(jobs.enqueue).not.toHaveBeenCalled();
   });
 });

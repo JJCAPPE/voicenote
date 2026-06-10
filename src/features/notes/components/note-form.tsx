@@ -7,9 +7,9 @@ export interface NoteFormProps {
   note?: Note;
   onSubmit: (input: {
     id?: string;
-    title: string;
-    description: string | null;
-    noteType: NoteType;
+    title?: string;
+    description?: string | null;
+    noteType?: NoteType;
   }) => Promise<ActionResult<Note>>;
   onSaved?: (note: Note) => void;
 }
@@ -25,12 +25,23 @@ export function NoteForm({ note, onSubmit, onSaved }: NoteFormProps) {
     event.preventDefault();
     setPending(true);
     setError(null);
-    const result = await onSubmit({
-      id: note?.id,
-      title,
-      description: description.trim() || null,
-      noteType,
-    });
+    const normalizedDescription = description.trim() || null;
+    const result = await onSubmit(
+      note
+        ? {
+            id: note.id,
+            ...(title.trim() !== note.title ? { title } : {}),
+            ...(normalizedDescription !== note.description
+              ? { description: normalizedDescription }
+              : {}),
+            ...(noteType !== note.noteType ? { noteType } : {}),
+          }
+        : {
+            title,
+            description: normalizedDescription,
+            noteType,
+          },
+    );
     setPending(false);
     if (!result.ok) {
       setError(result.error);

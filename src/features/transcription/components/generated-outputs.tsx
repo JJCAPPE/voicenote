@@ -22,12 +22,17 @@ export function GeneratedOutputs({
   currentRevision,
 }: GeneratedOutputsProps) {
   if (outputs.length === 0) {
-    return <p>No AI-generated notes are available yet.</p>;
+    return (
+      <div className="ai-empty-state">
+        <h2>AI notes will appear here.</h2>
+        <p>Record or add a transcript, then generate structured notes.</p>
+      </div>
+    );
   }
 
   return (
-    <section aria-labelledby="generated-note-outputs">
-      <h2 id="generated-note-outputs">Generated notes</h2>
+    <section className="ai-notes-document" aria-labelledby="generated-note-outputs">
+      <h2 className="sr-only" id="generated-note-outputs">Generated notes</h2>
       {outputs.map((output) => (
         <article key={output.id}>
           <header>
@@ -37,7 +42,7 @@ export function GeneratedOutputs({
             ) : null}
           </header>
           <OutputContent output={output} />
-          <small>
+          <small className="output-provenance">
             {output.model} · {output.promptVersion}
           </small>
         </article>
@@ -57,7 +62,7 @@ function OutputContent({ output }: { output: GeneratedOutputView }) {
   }
 
   if (output.outputType === "markdown_notes") {
-    return <pre>{String(output.content.markdown ?? "")}</pre>;
+    return <p className="markdown-output">{String(output.content.markdown ?? "")}</p>;
   }
 
   const values =
@@ -65,10 +70,22 @@ function OutputContent({ output }: { output: GeneratedOutputView }) {
       ? output.content.topics
       : output.content.items;
 
+  if (!Array.isArray(values) || values.length === 0) {
+    return <p className="muted">None identified.</p>;
+  }
+
   return (
-    <pre>
-      {JSON.stringify(Array.isArray(values) ? values : [], null, 2)}
-    </pre>
+    <ul className="generated-list">
+      {values.map((value, index) => (
+        <li key={index}>
+          {typeof value === "string"
+            ? value
+            : output.outputType === "decisions"
+              ? String((value as { decision?: unknown }).decision ?? "")
+              : String((value as { task?: unknown }).task ?? "")}
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -11,8 +11,10 @@ export type GenerationSegment = {
 export type GenerationSource = {
   noteId: string;
   sourceRevision: number;
+  transcriptRevision: number;
   activeTranscriptVersion: "raw" | "cleaned" | "user_edited";
   transcript: string;
+  liveNotes: string;
   segments: GenerationSegment[];
 };
 
@@ -33,6 +35,8 @@ export type AttachmentIndexSource = {
 type NoteRow = {
   id: string;
   transcript_revision: number;
+  generation_revision: number;
+  live_notes: string;
   active_transcript_version: GenerationSource["activeTranscriptVersion"];
   raw_combined_transcript: string | null;
   cleaned_transcript: string | null;
@@ -62,7 +66,7 @@ export class AiSourceRepository {
     const { data, error } = await this.database
       .from("notes")
       .select(
-        "id, transcript_revision, active_transcript_version, raw_combined_transcript, cleaned_transcript, user_edited_transcript, recording_segments(id, segment_index, original_filename, status)",
+        "id, transcript_revision, generation_revision, live_notes, active_transcript_version, raw_combined_transcript, cleaned_transcript, user_edited_transcript, recording_segments(id, segment_index, original_filename, status)",
       )
       .eq("id", noteId)
       .maybeSingle();
@@ -88,9 +92,11 @@ export class AiSourceRepository {
 
     return {
       noteId: row.id,
-      sourceRevision: row.transcript_revision,
+      sourceRevision: row.generation_revision,
+      transcriptRevision: row.transcript_revision,
       activeTranscriptVersion: row.active_transcript_version,
       transcript: activeTranscript(row),
+      liveNotes: row.live_notes,
       segments,
     };
   }

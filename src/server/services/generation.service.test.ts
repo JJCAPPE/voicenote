@@ -11,6 +11,8 @@ const cleanup = {
   technicalTerms: ["vector"],
 };
 const summary = {
+  suggestedTitle: "Launch review",
+  suggestedDescription: "The team reviewed the launch plan.",
   shortSummary: "Short",
   longSummary: "Long",
   markdownNotes: "# Notes",
@@ -45,8 +47,10 @@ describe("GenerationService", () => {
         getGenerationSource: vi.fn(async () => ({
           noteId: "note-1",
           sourceRevision: 2,
+          transcriptRevision: 2,
           activeTranscriptVersion: "raw" as const,
           transcript: "Raw",
+          liveNotes: "",
           segments: [],
         })),
       },
@@ -75,8 +79,10 @@ describe("GenerationService", () => {
         getGenerationSource: vi.fn(async () => ({
           noteId: "note-1",
           sourceRevision: 3,
+          transcriptRevision: 2,
           activeTranscriptVersion: "user_edited" as const,
           transcript: "Raw",
+          liveNotes: "Remember the owner.",
           segments: [{ id: "segment-1", index: 0, label: "First" }],
         })),
       },
@@ -91,6 +97,10 @@ describe("GenerationService", () => {
       throw new Error("Expected generated output persistence.");
     }
     expect(write.preserveUserEditedTranscript).toBe(true);
+    expect(write.suggestedTitle).toBe("Launch review");
+    expect(write.suggestedDescription).toBe(
+      "The team reviewed the launch plan.",
+    );
     expect(write.outputs.map((output) => output.outputType)).toEqual([
       "summary",
       "markdown_notes",
@@ -102,14 +112,14 @@ describe("GenerationService", () => {
       write.outputs.every(
         (output) =>
           output.model === "gemini-2.5-flash" &&
-          output.promptVersion === "summarize-note.v1" &&
+          output.promptVersion === "summarize-note.v2" &&
           output.sourceRevision === 3,
       ),
     ).toBe(true);
     expect(jobs.enqueue).toHaveBeenCalledWith({
       type: "index_note",
       noteId: "note-1",
-      sourceRevision: 3,
+      sourceRevision: 2,
     });
   });
 
@@ -120,8 +130,10 @@ describe("GenerationService", () => {
         getGenerationSource: vi.fn(async () => ({
           noteId: "note-1",
           sourceRevision: 3,
+          transcriptRevision: 3,
           activeTranscriptVersion: "raw" as const,
           transcript: "Raw",
+          liveNotes: "",
           segments: [{ id: "segment-1", index: 0, label: "First" }],
         })),
       },

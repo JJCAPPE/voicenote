@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { TranscriptVersion } from "@/types/models";
 
 export interface TranscriptEditorProps {
@@ -20,7 +20,8 @@ export function TranscriptEditor({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function save() {
+  const save = useCallback(async () => {
+    if (pending || !draft.trim()) return;
     setPending(true);
     setError(null);
     try {
@@ -30,21 +31,34 @@ export function TranscriptEditor({
     } finally {
       setPending(false);
     }
-  }
+  }, [draft, onSave, pending]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        void save();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [save]);
 
   return (
-    <section>
-      <p>
-        Version: {version}
+    <section className="editor-surface transcript-editor">
+      <div className="editor-status">
+        <span>
+          {version.replace("_", " ")}
         {staleIndex ? " (search index updating)" : ""}
-      </p>
+        </span>
+        <kbd>⌘ S</kbd>
+      </div>
       <textarea
         aria-label="Transcript"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
-        rows={20}
       />
-      <button type="button" disabled={pending || !draft.trim()} onClick={save}>
+      <button className="editor-save" type="button" disabled={pending || !draft.trim()} onClick={save}>
         {pending ? "Saving..." : "Save transcript"}
       </button>
       {error ? <p role="alert">{error}</p> : null}

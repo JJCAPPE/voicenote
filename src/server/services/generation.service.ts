@@ -8,7 +8,7 @@ import type {
   AiSourceRepository,
   GenerationSource,
 } from "@/server/repositories/ai-source.repository";
-import { SUMMARIZE_NOTE_PROMPT_VERSION } from "@/server/prompts/summarize-note.v1";
+import { SUMMARIZE_NOTE_PROMPT_VERSION } from "@/server/prompts/summarize-note.v2";
 
 export type GenerationResult = "generated" | "stale";
 
@@ -54,6 +54,7 @@ export class GenerationService {
     const cleanup = await this.llm.cleanTranscript({ transcript });
     const summary = await this.llm.summarizeNote({
       cleanedTranscript: cleanup.cleanedTranscript,
+      liveNotes: source.liveNotes,
       segments: source.segments.map((segment) => ({
         id: segment.id,
         label: segment.label,
@@ -67,6 +68,8 @@ export class GenerationService {
       cleanedTranscript: cleanup.cleanedTranscript,
       preserveUserEditedTranscript:
         source.activeTranscriptVersion === "user_edited",
+      suggestedTitle: summary.suggestedTitle,
+      suggestedDescription: summary.suggestedDescription,
       outputs: buildOutputs(summary, this.llm.model, sourceRevision),
     });
     if (!saved) {
@@ -76,7 +79,7 @@ export class GenerationService {
     await this.jobQueue.enqueue({
       type: "index_note",
       noteId,
-      sourceRevision,
+      sourceRevision: source.transcriptRevision,
     });
     return "generated";
   }

@@ -26,16 +26,40 @@ export function NoteList({ notes, onDelete }: NoteListProps) {
 
   return (
     <>
-      <ul>
+      <ol className="note-library-list" aria-label="Notes">
         {visibleNotes.map((note) => (
           <li key={note.id}>
-            <a href={`/notes/${note.id}`}>{note.title}</a>
-            <button type="button" onClick={() => void remove(note.id)}>
-              Delete
+            <a href={`/notes/${note.id}`}>
+              <span className="note-row-title">
+                <strong>{note.title}</strong>
+                {note.titleOrigin === "placeholder" ? (
+                  <span className="processing-label">Waiting for transcript</span>
+                ) : null}
+              </span>
+              <span className="note-row-description">
+                {note.description || "No description yet."}
+              </span>
+              <span className="note-row-meta">
+                {note.noteType.replace("_", " ")} · Updated{" "}
+                {new Intl.DateTimeFormat("en", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }).format(note.updatedAt)}
+              </span>
+            </a>
+            <button
+              className="icon-button"
+              aria-label={`Delete ${note.title}`}
+              type="button"
+              onClick={() => void remove(note.id)}
+            >
+              ×
             </button>
           </li>
         ))}
-      </ul>
+      </ol>
       {error ? <p role="alert">{error}</p> : null}
     </>
   );

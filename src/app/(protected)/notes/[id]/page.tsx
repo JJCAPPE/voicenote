@@ -11,8 +11,10 @@ const ParamsSchema = z.object({ id: z.uuid() });
 
 export default async function NotePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ record?: string }>;
 }) {
   try {
     await requireSession();
@@ -36,5 +38,11 @@ export default async function NotePage({
     note.jobs[0]?.id ?? "no-jobs",
     note.jobs[0]?.status ?? "none",
   ].join(":");
-  return <NoteWorkspace key={workspaceKey} initialDetail={note} />;
+  return (
+    <NoteWorkspace
+      key={workspaceKey}
+      initialDetail={note}
+      autoStart={(await searchParams).record === "1"}
+    />
+  );
 }

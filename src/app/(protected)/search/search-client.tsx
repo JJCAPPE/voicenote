@@ -10,7 +10,7 @@ type SearchResponse =
   | { ok: true; data: SearchResult[] }
   | { ok: false; error: string };
 
-export function SearchClient() {
+export function SearchClient({ autoFocus = false }: { autoFocus?: boolean }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [pending, setPending] = useState(false);
@@ -47,6 +47,7 @@ export function SearchClient() {
         error={error}
         onChange={setQuery}
         onSubmit={search}
+        autoFocus={autoFocus}
       />
       <SearchResults results={results} hasSearched={hasSearched} />
     </section>

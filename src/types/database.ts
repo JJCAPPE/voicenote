@@ -7,6 +7,7 @@ import type {
   JobPayload,
   JobStatus,
   JobType,
+  MetadataOrigin,
   NoteType,
   SegmentStatus,
   TranscriptVersion,
@@ -17,12 +18,16 @@ export type NoteRow = {
   title: string;
   description: string | null;
   note_type: NoteType;
+  live_notes: string;
   raw_combined_transcript: string | null;
   cleaned_transcript: string | null;
   user_edited_transcript: string | null;
   active_transcript_version: TranscriptVersion;
   transcript_revision: number;
+  generation_revision: number;
   indexed_revision: number;
+  title_origin: MetadataOrigin;
+  description_origin: MetadataOrigin;
   created_at: string;
   updated_at: string;
 };

@@ -16,6 +16,8 @@ export type SaveGeneratedNoteInput = {
   sourceRevision: number;
   cleanedTranscript: string;
   preserveUserEditedTranscript: boolean;
+  suggestedTitle: string;
+  suggestedDescription: string;
   outputs: GeneratedOutputWrite[];
 };
 
@@ -30,6 +32,8 @@ export class GeneratedOutputRepository {
         p_source_revision: input.sourceRevision,
         p_cleaned_transcript: input.cleanedTranscript,
         p_preserve_user_edited: input.preserveUserEditedTranscript,
+        p_suggested_title: input.suggestedTitle,
+        p_suggested_description: input.suggestedDescription,
         p_outputs: input.outputs.map((output) => ({
           output_type: output.outputType,
           content: output.content,

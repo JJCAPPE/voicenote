@@ -20,6 +20,8 @@ export const DecisionSchema = z.object({
 });
 
 export const SummaryOutputSchema = z.object({
+  suggestedTitle: z.string().trim().min(1).max(80),
+  suggestedDescription: z.string().trim().min(1).max(240),
   shortSummary: z.string().trim().min(1),
   longSummary: z.string().trim().min(1),
   markdownNotes: z.string().trim().min(1),
@@ -64,6 +66,7 @@ export type SummarySegment = {
 
 export type SummaryInput = {
   cleanedTranscript: string;
+  liveNotes: string;
   segments: SummarySegment[];
 };
 

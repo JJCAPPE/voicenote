@@ -4,7 +4,11 @@ import { requireSession } from "@/lib/auth/session";
 
 import { SearchClient } from "./search-client";
 
-export default async function SearchPage() {
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
   try {
     await requireSession();
   } catch {
@@ -23,7 +27,7 @@ export default async function SearchPage() {
           labelled by source.
         </p>
       </header>
-      <SearchClient />
+      <SearchClient autoFocus={(await searchParams).focus === "1"} />
     </>
   );
 }

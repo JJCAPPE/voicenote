@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import { type FormEvent, useEffect, useRef } from "react";
 
 type SearchFormProps = {
   value: string;
@@ -8,6 +8,7 @@ type SearchFormProps = {
   error?: string | null;
   onChange: (value: string) => void;
   onSubmit: () => void | Promise<void>;
+  autoFocus?: boolean;
 };
 
 export function SearchForm({
@@ -16,7 +17,14 @@ export function SearchForm({
   error,
   onChange,
   onSubmit,
+  autoFocus = false,
 }: SearchFormProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void onSubmit();
@@ -27,6 +35,7 @@ export function SearchForm({
       <label htmlFor="semantic-search">Search notes and attachments</label>
       <div>
         <input
+          ref={inputRef}
           id="semantic-search"
           name="query"
           type="search"

@@ -1,12 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import type { SegmentUpload } from "@/server/services/recording.service";
 import type { ActionResult, RecordingSegment } from "@/types/models";
 import {
   chooseRecorderMimeType,
   formatRecordingTime,
 } from "@/features/recordings/lib/recorder-utils";
+import {
+  hasOpenDialog,
+  isTypingTarget,
+} from "@/features/shortcuts/shortcuts";
 
 type CreateSegment = (input: {
   noteId: string;
@@ -23,8 +34,16 @@ export interface RecorderProps {
   noteId: string;
   createSegment: CreateSegment;
   confirmSegment: ConfirmSegment;
+  autoStart?: boolean;
   onUploaded?: (segment: RecordingSegment) => void;
+  onStateChange?: (state: RecorderState) => void;
 }
+
+export type RecorderState = "idle" | "recording" | "uploading";
+
+export type RecorderHandle = {
+  toggle: () => void;
+};
 
 function uploadBlob(
   signedUrl: string,
@@ -51,18 +70,24 @@ function uploadBlob(
   });
 }
 
-export function Recorder({
-  noteId,
-  createSegment,
-  confirmSegment,
-  onUploaded,
-}: RecorderProps) {
+export const Recorder = forwardRef<RecorderHandle, RecorderProps>(function Recorder(
+  {
+    noteId,
+    createSegment,
+    confirmSegment,
+    autoStart = false,
+    onUploaded,
+    onStateChange,
+  },
+  ref,
+) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startedAtRef = useRef(0);
   const previewUrlRef = useRef<string | null>(null);
-  const [state, setState] = useState<"idle" | "recording" | "uploading">("idle");
+  const autoStartConsumedRef = useRef(false);
+  const [state, setState] = useState<RecorderState>("idle");
   const [seconds, setSeconds] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -73,6 +98,14 @@ export function Recorder({
     previewUrlRef.current = url;
     setPreviewUrl(url);
   }, []);
+
+  const updateState = useCallback(
+    (nextState: RecorderState) => {
+      setState(nextState);
+      onStateChange?.(nextState);
+    },
+    [onStateChange],
+  );
 
   useEffect(() => {
     if (state !== "recording") return;
@@ -97,7 +130,57 @@ export function Recorder({
     [],
   );
 
-  async function startRecording() {
+  const finishRecording = useCallback(
+    async (mimeType: string) => {
+      const durationSeconds = Math.max(
+        1,
+        Math.round((Date.now() - startedAtRef.current) / 1000),
+      );
+      const blob = new Blob(chunksRef.current, {
+        type: mimeType || "audio/webm",
+      });
+      replacePreview(URL.createObjectURL(blob));
+      updateState("uploading");
+      setProgress(0);
+
+      try {
+        const created = await createSegment({
+          noteId,
+          filename: `recording-${new Date().toISOString()}`,
+          mimeType: blob.type,
+          fileSizeBytes: blob.size,
+          durationSeconds,
+        });
+        if (!created.ok) throw new Error(created.error);
+        await uploadBlob(created.data.upload.signedUrl, blob, setProgress);
+        const confirmed = await confirmSegment({
+          segmentId: created.data.segment.id,
+        });
+        if (!confirmed.ok) throw new Error(confirmed.error);
+        setProgress(100);
+        onUploaded?.(confirmed.data);
+      } catch (uploadError) {
+        setError(
+          uploadError instanceof Error ? uploadError.message : "Upload failed.",
+        );
+      } finally {
+        updateState("idle");
+        recorderRef.current = null;
+        streamRef.current = null;
+      }
+    },
+    [
+      confirmSegment,
+      createSegment,
+      noteId,
+      onUploaded,
+      replacePreview,
+      updateState,
+    ],
+  );
+
+  const startRecording = useCallback(async () => {
+    if (recorderRef.current || state !== "idle") return;
     setError(null);
     replacePreview(null);
     try {
@@ -113,82 +196,99 @@ export function Recorder({
       recorder.onstop = () => void finishRecording(recorder.mimeType);
       streamRef.current = stream;
       recorderRef.current = recorder;
-      // Timing starts only after permission is granted and the recorder exists.
-      // eslint-disable-next-line react-hooks/purity
       startedAtRef.current = Date.now();
       setSeconds(0);
-      setState("recording");
+      updateState("recording");
       recorder.start();
     } catch {
       setError("Microphone access is required to record.");
     }
-  }
+  }, [finishRecording, replacePreview, state, updateState]);
 
-  function stopRecording() {
+  const stopRecording = useCallback(() => {
+    if (state !== "recording") return;
     recorderRef.current?.stop();
     streamRef.current?.getTracks().forEach((track) => track.stop());
-  }
+  }, [state]);
 
-  async function finishRecording(mimeType: string) {
-    const durationSeconds = Math.max(
-      1,
-      Math.round((Date.now() - startedAtRef.current) / 1000),
-    );
-    const blob = new Blob(chunksRef.current, {
-      type: mimeType || "audio/webm",
+  const toggle = useCallback(() => {
+    if (state === "idle") void startRecording();
+    else if (state === "recording") stopRecording();
+  }, [startRecording, state, stopRecording]);
+
+  useImperativeHandle(ref, () => ({ toggle }), [toggle]);
+
+  useEffect(() => {
+    if (!autoStart || autoStartConsumedRef.current) return;
+    autoStartConsumedRef.current = true;
+    void startRecording().finally(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("record");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
     });
-    replacePreview(URL.createObjectURL(blob));
-    setState("uploading");
-    setProgress(0);
+  }, [autoStart, startRecording]);
 
-    try {
-      const created = await createSegment({
-        noteId,
-        filename: `recording-${new Date().toISOString()}`,
-        mimeType: blob.type,
-        fileSizeBytes: blob.size,
-        durationSeconds,
-      });
-      if (!created.ok) throw new Error(created.error);
-      await uploadBlob(created.data.upload.signedUrl, blob, setProgress);
-      const confirmed = await confirmSegment({
-        segmentId: created.data.segment.id,
-      });
-      if (!confirmed.ok) throw new Error(confirmed.error);
-      setProgress(100);
-      onUploaded?.(confirmed.data);
-    } catch (uploadError) {
-      setError(
-        uploadError instanceof Error ? uploadError.message : "Upload failed.",
-      );
-    } finally {
-      setState("idle");
-      recorderRef.current = null;
-      streamRef.current = null;
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (
+        event.key.toLowerCase() !== "r" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.shiftKey ||
+        isTypingTarget(event.target) ||
+        hasOpenDialog()
+      ) {
+        return;
+      }
+      event.preventDefault();
+      toggle();
     }
-  }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toggle]);
 
   return (
-    <section aria-label="Audio recorder">
-      <p aria-live="polite">
-        {state === "recording" ? "Recording" : state === "uploading" ? "Uploading" : "Ready"}{" "}
-        {formatRecordingTime(seconds)}
-      </p>
-      {state === "idle" ? (
-        <button type="button" onClick={startRecording}>
-          Start recording
-        </button>
-      ) : state === "recording" ? (
-        <button type="button" onClick={stopRecording}>
-          Stop recording
-        </button>
-      ) : (
-        <progress value={progress} max={100}>
-          {progress}%
-        </progress>
-      )}
+    <section className="recorder" aria-label="Audio recorder">
+      <button
+        className="recorder-control"
+        type="button"
+        disabled={state === "uploading"}
+        aria-label={state === "recording" ? "Stop recording" : "Start recording"}
+        onClick={toggle}
+      >
+        <span data-recording={state === "recording"} />
+      </button>
+      <div className="recorder-readout">
+        <p aria-live="polite">
+          <span className="record-dot" data-active={state === "recording"} />
+          {state === "recording"
+            ? "Recording"
+            : state === "uploading"
+              ? "Uploading segment"
+              : "Ready to record"}
+        </p>
+        <strong>{formatRecordingTime(seconds)}</strong>
+      </div>
+      <div className="waveform" aria-hidden="true" data-active={state === "recording"}>
+        {Array.from({ length: 28 }, (_, index) => (
+          <span key={index} />
+        ))}
+      </div>
+      <div className="recorder-action">
+        {state === "uploading" ? (
+          <progress value={progress} max={100}>
+            {progress}%
+          </progress>
+        ) : (
+          <>
+            <span>{state === "recording" ? "Stop" : "Record"}</span>
+            <kbd>R</kbd>
+          </>
+        )}
+      </div>
       {previewUrl ? <audio controls src={previewUrl} /> : null}
       {error ? <p role="alert">{error}</p> : null}
     </section>
   );
-}
+});

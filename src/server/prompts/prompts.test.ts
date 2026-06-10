@@ -16,12 +16,12 @@ import {
 import {
   SUMMARIZE_NOTE_PROMPT_VERSION,
   buildSummarizeNotePrompt,
-} from "@/server/prompts/summarize-note.v1";
+} from "@/server/prompts/summarize-note.v2";
 
 describe("versioned AI prompts", () => {
   it("exports stable prompt versions", () => {
     expect(CLEAN_TRANSCRIPT_PROMPT_VERSION).toBe("clean-transcript.v1");
-    expect(SUMMARIZE_NOTE_PROMPT_VERSION).toBe("summarize-note.v1");
+    expect(SUMMARIZE_NOTE_PROMPT_VERSION).toBe("summarize-note.v2");
     expect(ANSWER_QUESTION_PROMPT_VERSION).toBe("answer-question.v1");
   });
 
@@ -36,6 +36,7 @@ describe("versioned AI prompts", () => {
   it("restricts summaries and answers to supplied evidence", () => {
     const summary = buildSummarizeNotePrompt({
       cleanedTranscript: "clean",
+      liveNotes: "Owner is Morgan",
       segments: [{ id: "segment-1", label: "First" }],
     });
     const answer = buildAnswerQuestionPrompt({
@@ -45,6 +46,7 @@ describe("versioned AI prompts", () => {
 
     expect(summary).toContain("Do not invent facts");
     expect(summary).toContain("segment-1");
+    expect(summary).toContain("Owner is Morgan");
     expect(answer).toContain("Never use outside knowledge");
     expect(answer).toContain("insufficientContext");
     expect(answer).toContain('id="chunk-1"');
@@ -64,6 +66,8 @@ describe("structured output schemas", () => {
 
     expect(
       SummaryOutputSchema.parse({
+        suggestedTitle: "Launch review",
+        suggestedDescription: "A review of the launch plan.",
         shortSummary: "Short",
         longSummary: "Long",
         markdownNotes: "# Notes",

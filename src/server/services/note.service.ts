@@ -1,5 +1,8 @@
 import { NotFoundError, ValidationError } from "@/lib/errors";
-import { SaveTranscriptSchema } from "@/features/notes/schemas/note.schema";
+import {
+  SaveLiveNotesSchema,
+  SaveTranscriptSchema,
+} from "@/features/notes/schemas/note.schema";
 import type {
   CreateNoteInput,
   NoteRepository,
@@ -32,6 +35,16 @@ export class NoteService {
 
   create(input: CreateNoteInput): Promise<Note> {
     return this.repository.create(input);
+  }
+
+  createQuickRecording(): Promise<Note> {
+    return this.repository.create({
+      title: "Untitled recording",
+      description: null,
+      noteType: "other",
+      titleOrigin: "placeholder",
+      descriptionOrigin: "placeholder",
+    });
   }
 
   update(id: string, input: UpdateNoteInput): Promise<Note> {
@@ -73,6 +86,14 @@ export class NoteService {
       sourceRevision: note.transcriptRevision,
     });
     return note;
+  }
+
+  async saveLiveNotes(noteId: string, liveNotes: string): Promise<Note> {
+    const parsed = SaveLiveNotesSchema.safeParse({ id: noteId, liveNotes });
+    if (!parsed.success) {
+      throw new ValidationError("Live notes are too long.");
+    }
+    return this.repository.saveLiveNotes(parsed.data.id, parsed.data.liveNotes);
   }
 
   rebuildRawCombinedTranscript(noteId: string): Promise<Note> {

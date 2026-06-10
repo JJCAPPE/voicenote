@@ -14,7 +14,7 @@ import {
 } from "@/lib/ai/llm.provider";
 import { buildAnswerQuestionPrompt } from "@/server/prompts/answer-question.v1";
 import { buildCleanTranscriptPrompt } from "@/server/prompts/clean-transcript.v1";
-import { buildSummarizeNotePrompt } from "@/server/prompts/summarize-note.v1";
+import { buildSummarizeNotePrompt } from "@/server/prompts/summarize-note.v2";
 
 export const DEFAULT_GEMINI_GENERATION_MODEL = "gemini-2.5-flash";
 

@@ -16,15 +16,10 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <header className="page-heading">
-        <div>
-          <p className="eyebrow">Private workspace</p>
-          <h1>Capture the conversation. Keep the context.</h1>
-        </div>
-        <p>
-          Record in segments, attach source material, and retrieve the details
-          later with semantic search.
-        </p>
+      <header className="library-heading">
+        <p className="utility-label">Private workspace</p>
+        <h1>Your notes</h1>
+        <p>Record first. VoiceNote organizes the context after.</p>
       </header>
       <DashboardClient initialNotes={notes} />
     </>
