@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { getAttachmentService } from "@/features/attachments/attachment.runtime";
-import { getServerEnv } from "@/lib/env";
+import { getServerEnvValue } from "@/lib/env";
 import { getJobService, getTranscriptionService } from "@/server/services/factories";
 import {
   handleGenerateNoteJob,
@@ -16,7 +16,7 @@ const WorkerRequestSchema = z.object({
 
 function authorized(request: Request): boolean {
   const actual = request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
-  const expected = getServerEnv().JOB_WORKER_SECRET;
+  const expected = getServerEnvValue("JOB_WORKER_SECRET");
   const actualBuffer = Buffer.from(actual);
   const expectedBuffer = Buffer.from(expected);
   return (

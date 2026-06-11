@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { ProviderError, StorageError } from "@/lib/errors";
+import {
+  ProviderError,
+  StorageError,
+  TranscriptionPendingError,
+} from "@/lib/errors";
 import type { TranscriptionProvider } from "@/lib/ai/transcription.provider";
 import type { NoteRepository } from "@/server/repositories/note.repository";
 import type { RecordingSegmentRepository } from "@/server/repositories/recording-segment.repository";
@@ -74,6 +78,7 @@ function setup(overrides?: {
 }) {
   const current = overrides?.segment ?? segment;
   const segments = {
+    findById: vi.fn(async () => current),
     findByExternalJobId: vi.fn(async () => current),
     markFailed: vi.fn(async (_id, message) => ({
       ...current,
@@ -122,6 +127,16 @@ function setup(overrides?: {
 }
 
 describe("TranscriptionService webhook processing", () => {
+  it("leaves provider work pending during status sync", async () => {
+    const pending = setup({
+      providerError: new TranscriptionPendingError(),
+    });
+    await expect(
+      pending.service.syncTranscription(segmentId),
+    ).resolves.toEqual(expect.objectContaining({ status: "pending" }));
+    expect(pending.segments.markFailed).not.toHaveBeenCalled();
+  });
+
   it("treats completed callbacks as duplicate no-ops", async () => {
     const completed = setup({
       segment: { ...segment, status: "completed", rawTranscript: "Transcript" },

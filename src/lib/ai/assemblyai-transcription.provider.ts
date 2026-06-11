@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ProviderError } from "@/lib/errors";
+import { ProviderError, TranscriptionPendingError } from "@/lib/errors";
 import type {
   RawTranscript,
   SubmitAudioInput,
@@ -106,8 +106,14 @@ export class AssemblyAITranscriptionProvider implements TranscriptionProvider {
     if (parsed.data.status === "error") {
       throw new ProviderError("Transcription failed.");
     }
-    if (parsed.data.status !== "completed" || !parsed.data.text?.trim()) {
-      throw new ProviderError("Transcription is not complete.");
+    if (
+      parsed.data.status === "queued" ||
+      parsed.data.status === "processing"
+    ) {
+      throw new TranscriptionPendingError();
+    }
+    if (!parsed.data.text?.trim()) {
+      throw new ProviderError("Transcription result is empty.");
     }
 
     return {

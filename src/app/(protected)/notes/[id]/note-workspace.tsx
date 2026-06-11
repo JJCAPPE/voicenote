@@ -100,9 +100,11 @@ function pipelineState(detail: NoteDetail) {
 export function NoteWorkspace({
   initialDetail,
   autoStart = false,
+  enableTranscriptionSync = false,
 }: {
   initialDetail: NoteDetail;
   autoStart?: boolean;
+  enableTranscriptionSync?: boolean;
 }) {
   const router = useRouter();
   const [detail, setDetail] = useState(initialDetail);
@@ -165,8 +167,11 @@ export function NoteWorkspace({
           return response.ok ? ((await response.json()) as Job) : job;
         }),
       ).then((updates) => {
-        const completedGeneration = updates.some(
-          (job) => job.type === "generate_note" && job.status === "completed",
+        const completedRefresh = updates.some(
+          (job) =>
+            (job.type === "submit_transcription" ||
+              job.type === "generate_note") &&
+            job.status === "completed",
         );
         setDetail((current) => ({
           ...current,
@@ -174,12 +179,68 @@ export function NoteWorkspace({
             (job) => updates.find((update) => update.id === job.id) ?? job,
           ),
         }));
-        if (completedGeneration) router.refresh();
+        if (completedRefresh) router.refresh();
       });
     }, 2000);
 
     return () => window.clearInterval(timer);
   }, [detail.jobs, router]);
+
+  useEffect(() => {
+    if (!enableTranscriptionSync) return;
+    const transcribing = detail.segments.filter(
+      (segment) => segment.status === "transcribing",
+    );
+    if (transcribing.length === 0) return;
+
+    let cancelled = false;
+    let syncing = false;
+    const sync = async () => {
+      if (syncing) return;
+      syncing = true;
+      try {
+        const updates = await Promise.all(
+          transcribing.map(async (segment) => {
+            const response = await fetch(
+              `/api/recordings/${segment.id}/sync`,
+              { method: "POST" },
+            );
+            return response.ok
+              ? ((await response.json()) as {
+                  status: "pending" | "completed" | "duplicate" | "failed";
+                  segment: RecordingSegment;
+                })
+              : null;
+          }),
+        );
+        if (cancelled) return;
+
+        const changed = updates.filter(
+          (update): update is NonNullable<typeof update> =>
+            update !== null && update.status !== "pending",
+        );
+        if (changed.length === 0) return;
+        setDetail((current) => ({
+          ...current,
+          segments: current.segments.map(
+            (segment) =>
+              changed.find((update) => update.segment.id === segment.id)
+                ?.segment ?? segment,
+          ),
+        }));
+        router.refresh();
+      } finally {
+        syncing = false;
+      }
+    };
+
+    void sync();
+    const timer = window.setInterval(() => void sync(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [detail.segments, enableTranscriptionSync, router]);
 
   async function saveTranscript(value: string) {
     const result = await saveTranscriptAction({ id: detail.id, transcript: value });

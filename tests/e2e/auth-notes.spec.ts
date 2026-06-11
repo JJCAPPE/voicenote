@@ -6,9 +6,13 @@ test("login success/failure, route protection, and note CRUD", async ({
   page,
 }) => {
   const dashboardRequests: string[] = [];
+  const loginRequests: string[] = [];
   page.on("request", (request) => {
-    if (new URL(request.url()).pathname === "/dashboard") {
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === "/dashboard") {
       dashboardRequests.push(request.resourceType());
+    } else if (pathname === "/login") {
+      loginRequests.push(request.method());
     }
   });
 
@@ -19,11 +23,13 @@ test("login success/failure, route protection, and note CRUD", async ({
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByText("Invalid credentials.")).toBeVisible();
 
-  dashboardRequests.length = 0;
   await page.getByLabel("Password").fill("e2e-password");
+  dashboardRequests.length = 0;
+  loginRequests.length = 0;
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.waitForTimeout(1_000);
+  expect(loginRequests).toEqual(["POST"]);
   expect(dashboardRequests).toEqual([]);
   await page.keyboard.press("Control+/");
   await expect(

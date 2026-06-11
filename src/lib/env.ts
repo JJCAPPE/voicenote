@@ -25,6 +25,19 @@ const ServerEnvSchema = z.object({
 
 export type ServerEnv = z.infer<typeof ServerEnvSchema>;
 
+export function getServerEnvValue<K extends keyof ServerEnv>(
+  key: K,
+): ServerEnv[K] {
+  const schema = ServerEnvSchema.shape[key] as z.ZodType<ServerEnv[K]>;
+  const parsed = schema.safeParse(process.env[key]);
+  if (!parsed.success) {
+    throw new ValidationError("Server configuration is invalid.", {
+      cause: parsed.error,
+    });
+  }
+  return parsed.data;
+}
+
 export function getServerEnv(): ServerEnv {
   const parsed = ServerEnvSchema.safeParse(process.env);
   if (!parsed.success) {

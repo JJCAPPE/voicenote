@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/env", () => ({
-  getServerEnv: () => ({ JOB_WORKER_SECRET: "w".repeat(32) }),
+  getServerEnvValue: () => "w".repeat(32),
 }));
 vi.mock("@/server/services/factories", () => ({
   getJobService: () => ({

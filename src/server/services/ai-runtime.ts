@@ -1,6 +1,6 @@
 import { GeminiEmbeddingProvider } from "@/lib/ai/gemini-embedding.provider";
 import { GeminiLLMProvider } from "@/lib/ai/gemini-llm.provider";
-import { getServerEnv } from "@/lib/env";
+import { getServerEnvValue } from "@/lib/env";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { AiSourceRepository } from "@/server/repositories/ai-source.repository";
 import { ChatMessageRepository } from "@/server/repositories/chat-message.repository";
@@ -22,10 +22,10 @@ export function getAiRuntime(): AiRuntime {
 }
 
 function buildAiRuntime() {
-  const env = getServerEnv();
   const database = getSupabaseAdmin();
-  const llm = new GeminiLLMProvider(env.GEMINI_API_KEY);
-  const embeddings = new GeminiEmbeddingProvider(env.GEMINI_API_KEY);
+  const geminiApiKey = getServerEnvValue("GEMINI_API_KEY");
+  const llm = new GeminiLLMProvider(geminiApiKey);
+  const embeddings = new GeminiEmbeddingProvider(geminiApiKey);
   const sourceRepository = new AiSourceRepository(database);
   const chunkRepository = new ChunkRepository(database);
   const jobService = getJobService();

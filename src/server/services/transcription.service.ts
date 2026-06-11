@@ -1,4 +1,9 @@
-import { ProviderError, StorageError, ValidationError } from "@/lib/errors";
+import {
+  ProviderError,
+  StorageError,
+  TranscriptionPendingError,
+  ValidationError,
+} from "@/lib/errors";
 import type { TranscriptionProvider } from "@/lib/ai/transcription.provider";
 import type { NoteRepository } from "@/server/repositories/note.repository";
 import type { RecordingSegmentRepository } from "@/server/repositories/recording-segment.repository";
@@ -10,6 +15,10 @@ export type WebhookResult =
   | { status: "completed"; segment: RecordingSegment }
   | { status: "duplicate"; segment: RecordingSegment }
   | { status: "failed"; segment: RecordingSegment };
+
+export type SyncResult =
+  | WebhookResult
+  | { status: "pending"; segment: RecordingSegment };
 
 export class TranscriptionService {
   constructor(
@@ -74,10 +83,37 @@ export class TranscriptionService {
       throw new ValidationError("Recording segment is not transcribing.");
     }
 
+    return this.completeTranscription(segment);
+  }
+
+  async syncTranscription(segmentId: string): Promise<SyncResult> {
+    const segment = await this.segments.findById(segmentId);
+    if (!segment) throw new ValidationError("Recording segment was not found.");
+    if (segment.status === "completed") {
+      return { status: "duplicate", segment };
+    }
+    if (segment.status !== "transcribing" || !segment.externalJobId) {
+      throw new ValidationError("Recording segment is not transcribing.");
+    }
+
+    try {
+      return await this.completeTranscription(segment);
+    } catch (error) {
+      if (error instanceof TranscriptionPendingError) {
+        return { status: "pending", segment };
+      }
+      throw error;
+    }
+  }
+
+  private async completeTranscription(
+    segment: RecordingSegment,
+  ): Promise<WebhookResult> {
     let transcript;
     try {
-      transcript = await this.provider.getTranscript(externalJobId);
+      transcript = await this.provider.getTranscript(segment.externalJobId!);
     } catch (error) {
+      if (error instanceof TranscriptionPendingError) throw error;
       if (!(error instanceof ProviderError)) throw error;
       const failed = await this.segments.markFailed(
         segment.id,

@@ -1,8 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
-import { ProviderError } from "@/lib/errors";
 import { AssemblyAITranscriptionProvider } from "@/lib/ai/assemblyai-transcription.provider";
+import { ProviderError, TranscriptionPendingError } from "@/lib/errors";
 
 describe("AssemblyAITranscriptionProvider", () => {
+  it("distinguishes incomplete provider work from failures", async () => {
+    const provider = new AssemblyAITranscriptionProvider(
+      "key",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ status: "processing" }), {
+          status: 200,
+        }),
+      ) as typeof fetch,
+    );
+
+    await expect(provider.getTranscript("external-1")).rejects.toBeInstanceOf(
+      TranscriptionPendingError,
+    );
+  });
+
   it("submits the required model, detection, labels, and webhook auth", async () => {
     const fetchMock = vi.fn(
       async (_input: RequestInfo | URL, _init?: RequestInit) =>

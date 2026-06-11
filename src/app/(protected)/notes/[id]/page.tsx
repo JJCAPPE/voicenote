@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSession } from "@/lib/auth/session";
 import { NotFoundError } from "@/lib/errors";
+import { getServerEnvValue } from "@/lib/env";
 import { getNoteService } from "@/server/services/factories";
 
 import { NoteWorkspace } from "./note-workspace";
@@ -38,11 +39,17 @@ export default async function NotePage({
     note.jobs[0]?.id ?? "no-jobs",
     note.jobs[0]?.status ?? "none",
   ].join(":");
+  const appHostname = new URL(getServerEnvValue("APP_URL")).hostname;
   return (
     <NoteWorkspace
       key={workspaceKey}
       initialDetail={note}
       autoStart={(await searchParams).record === "1"}
+      enableTranscriptionSync={
+        appHostname === "localhost" ||
+        appHostname === "127.0.0.1" ||
+        appHostname === "::1"
+      }
     />
   );
 }

@@ -39,6 +39,61 @@ function serviceWith(current: Job) {
 }
 
 describe("JobService", () => {
+  it("waits for the worker invocation to be accepted", async () => {
+    let acceptTrigger: (() => void) | undefined;
+    const trigger = {
+      invoke: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            acceptTrigger = resolve;
+          }),
+      ),
+    };
+    const repository = {
+      findActiveByKey: vi.fn(async () => null),
+      insert: vi.fn(async () => job("queued")),
+    };
+    const service = new JobService(
+      repository as unknown as JobRepository,
+      trigger,
+    );
+
+    let settled = false;
+    const enqueue = service
+      .enqueue({ type: "index_note", noteId, sourceRevision: 2 })
+      .then(() => {
+        settled = true;
+      });
+
+    await vi.waitFor(() => expect(trigger.invoke).toHaveBeenCalledOnce());
+    expect(settled).toBe(false);
+    acceptTrigger?.();
+    await enqueue;
+    expect(settled).toBe(true);
+  });
+
+  it("re-triggers deduplicated queued work", async () => {
+    const existing = job("queued");
+    const repository = {
+      findActiveByKey: vi.fn(async () => existing),
+      insert: vi.fn(),
+    };
+    const trigger = { invoke: vi.fn(async () => undefined) };
+    const service = new JobService(
+      repository as unknown as JobRepository,
+      trigger,
+    );
+
+    await expect(
+      service.enqueue({
+        type: "index_note",
+        noteId,
+        sourceRevision: 2,
+      }),
+    ).resolves.toBe(existing);
+    expect(trigger.invoke).toHaveBeenCalledOnce();
+  });
+
   it("deduplicates active work by source and revision", async () => {
     const existing = job("queued");
     const repository = {

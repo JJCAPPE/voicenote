@@ -1,5 +1,5 @@
 import { AssemblyAITranscriptionProvider } from "@/lib/ai/assemblyai-transcription.provider";
-import { getServerEnv } from "@/lib/env";
+import { getServerEnvValue } from "@/lib/env";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { JobRepository } from "@/server/repositories/job.repository";
 import { NoteRepository } from "@/server/repositories/note.repository";
@@ -54,14 +54,18 @@ export function getRecordingService(): RecordingService {
 
 export function getTranscriptionService(): TranscriptionService {
   const client = getSupabaseAdmin();
-  const env = getServerEnv();
   return new TranscriptionService(
     new RecordingSegmentRepository(client),
     new NoteRepository(client),
     createJobService(),
     new SupabaseAudioStorage(client),
-    new AssemblyAITranscriptionProvider(env.ASSEMBLYAI_API_KEY),
-    new URL("/api/webhooks/assemblyai", env.APP_URL).toString(),
-    env.ASSEMBLYAI_WEBHOOK_SECRET,
+    new AssemblyAITranscriptionProvider(
+      getServerEnvValue("ASSEMBLYAI_API_KEY"),
+    ),
+    new URL(
+      "/api/webhooks/assemblyai",
+      getServerEnvValue("APP_URL"),
+    ).toString(),
+    getServerEnvValue("ASSEMBLYAI_WEBHOOK_SECRET"),
   );
 }

@@ -2,8 +2,8 @@ import "server-only";
 
 import { compare } from "bcryptjs";
 
-import { getServerEnv } from "@/lib/env";
+import { getServerEnvValue } from "@/lib/env";
 
 export async function verifyPassword(password: string): Promise<boolean> {
-  return compare(password, getServerEnv().APP_PASSWORD_HASH);
+  return compare(password, getServerEnvValue("APP_PASSWORD_HASH"));
 }

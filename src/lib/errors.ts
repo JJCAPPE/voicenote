@@ -43,6 +43,12 @@ export class ProviderError extends AppError {
   }
 }
 
+export class TranscriptionPendingError extends ProviderError {
+  constructor() {
+    super("Transcription is not complete.");
+  }
+}
+
 export class JobStateError extends AppError {
   constructor(message = "Invalid job state.", options?: ErrorOptions) {
     super("JOB_STATE_ERROR", "Invalid job state.", message, options);

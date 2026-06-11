@@ -8,7 +8,7 @@ import {
   SESSION_DURATION_SECONDS,
 } from "@/lib/auth/constants";
 import { AuthenticationError } from "@/lib/errors";
-import { getServerEnv } from "@/lib/env";
+import { getServerEnvValue } from "@/lib/env";
 
 export const SESSION_COOKIE = SESSION_COOKIE_NAME;
 export { SESSION_COOKIE_NAME, SESSION_DURATION_SECONDS };
@@ -16,7 +16,7 @@ export { SESSION_COOKIE_NAME, SESSION_DURATION_SECONDS };
 export type Session = { authenticated: true };
 
 function getSecret(): Uint8Array {
-  return new TextEncoder().encode(getServerEnv().SESSION_SECRET);
+  return new TextEncoder().encode(getServerEnvValue("SESSION_SECRET"));
 }
 
 export async function signSessionToken(

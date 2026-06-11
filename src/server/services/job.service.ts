@@ -22,7 +22,10 @@ export class JobService {
     const payload = parsed.data as JobPayload;
     const deduplicationKey = this.getDeduplicationKey(payload);
     const existing = await this.repository.findActiveByKey(deduplicationKey);
-    if (existing) return existing;
+    if (existing) {
+      await this.triggerQueuedWork();
+      return existing;
+    }
 
     let job: Job;
     try {
@@ -33,11 +36,7 @@ export class JobService {
       job = racedJob;
     }
 
-    if (this.trigger) {
-      void this.trigger.invoke().catch(() => {
-        // Scheduled queue recovery handles invocation failures.
-      });
-    }
+    await this.triggerQueuedWork();
     return job;
   }
 
@@ -96,11 +95,7 @@ export class JobService {
     });
     if (!updated) throw new JobStateError();
 
-    if (this.trigger) {
-      void this.trigger.invoke().catch(() => {
-        // Scheduled queue recovery handles invocation failures.
-      });
-    }
+    await this.triggerQueuedWork();
     return updated;
   }
 
@@ -120,6 +115,15 @@ export class JobService {
       case "extract_attachment":
       case "index_attachment":
         return `${payload.type}:${payload.attachmentId}`;
+    }
+  }
+
+  private async triggerQueuedWork(): Promise<void> {
+    if (!this.trigger) return;
+    try {
+      await this.trigger.invoke();
+    } catch {
+      // Scheduled queue recovery handles invocation failures.
     }
   }
 }
